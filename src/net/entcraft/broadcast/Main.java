@@ -32,15 +32,11 @@ public class Main extends JavaPlugin {
         getServer().getPluginManager().registerEvents(rules, this);
         getCommand("motd").setExecutor(motd);
         getCommand("rules").setExecutor(rules);
-        File txtFile = new File((new StringBuilder(String.valueOf(instance.getDataFolder().toString()))).append(File.separator).append("broadcast.txt").toString());
-        if(!txtFile.exists())
-        {
-            try
-            {
+        File txtFile = new File(instance.getDataFolder().toString() + File.separator + "broadcast.txt");
+        if(!txtFile.exists()) {
+            try {
                 txtFile.createNewFile();
-            }
-            catch(IOException e)
-            {
+            } catch(IOException e) {
                 e.printStackTrace();
             }
         }
@@ -48,7 +44,7 @@ public class Main extends JavaPlugin {
             public void run() {
                 if(enabled) {
                     try {
-                        List<String> sList = processText(readTextFile((new StringBuilder(String.valueOf(Main.instance.getDataFolder().toString()))).append(File.separator).append("broadcast.txt").toString()));
+                        List<String> sList = processText(readTextFile(Main.instance.getDataFolder().toString() + File.separator + "broadcast.txt"));
                         for(int i = 0; i < sList.size(); i++) {
                             String s = (String)sList.get(i);
                             if(s.startsWith("@c")) {
@@ -57,8 +53,7 @@ public class Main extends JavaPlugin {
                                 Main.instance.getServer().broadcastMessage((String)sList.get(i));
                             }
                         }
-                    }
-                    catch(IOException e){
+                    } catch(IOException e) {
                         e.printStackTrace();
                     }
                 }
@@ -79,22 +74,22 @@ public class Main extends JavaPlugin {
     public List<String> processText(List<String> sList) {
         for(int i = 0; i < sList.size(); i++) {
             String s = (String)sList.get(i);
-            s = s.replaceAll("&0", (new StringBuilder()).append(ChatColor.BLACK).toString());
-            s = s.replaceAll("&1", (new StringBuilder()).append(ChatColor.DARK_BLUE).toString());
-            s = s.replaceAll("&2", (new StringBuilder()).append(ChatColor.DARK_GREEN).toString());
-            s = s.replaceAll("&3", (new StringBuilder()).append(ChatColor.DARK_AQUA).toString());
-            s = s.replaceAll("&4", (new StringBuilder()).append(ChatColor.DARK_RED).toString());
-            s = s.replaceAll("&5", (new StringBuilder()).append(ChatColor.DARK_PURPLE).toString());
-            s = s.replaceAll("&6", (new StringBuilder()).append(ChatColor.GOLD).toString());
-            s = s.replaceAll("&7", (new StringBuilder()).append(ChatColor.GRAY).toString());
-            s = s.replaceAll("&8", (new StringBuilder()).append(ChatColor.DARK_GRAY).toString());
-            s = s.replaceAll("&9", (new StringBuilder()).append(ChatColor.BLUE).toString());
-            s = s.replaceAll("&a", (new StringBuilder()).append(ChatColor.GREEN).toString());
-            s = s.replaceAll("&b", (new StringBuilder()).append(ChatColor.AQUA).toString());
-            s = s.replaceAll("&c", (new StringBuilder()).append(ChatColor.RED).toString());
-            s = s.replaceAll("&d", (new StringBuilder()).append(ChatColor.LIGHT_PURPLE).toString());
-            s = s.replaceAll("&e", (new StringBuilder()).append(ChatColor.YELLOW).toString());
-            s = s.replaceAll("&f", (new StringBuilder()).append(ChatColor.WHITE).toString());
+            s = s.replaceAll("&0", ChatColor.BLACK + "");
+            s = s.replaceAll("&1", ChatColor.DARK_BLUE + "");
+            s = s.replaceAll("&2", ChatColor.DARK_GREEN + "");
+            s = s.replaceAll("&3", ChatColor.DARK_AQUA + "");
+            s = s.replaceAll("&4", ChatColor.DARK_RED + "");
+            s = s.replaceAll("&5", ChatColor.DARK_PURPLE + "");
+            s = s.replaceAll("&6", ChatColor.GOLD + "");
+            s = s.replaceAll("&7", ChatColor.GRAY + "");
+            s = s.replaceAll("&8", ChatColor.DARK_GRAY + "");
+            s = s.replaceAll("&9", ChatColor.BLUE + "");
+            s = s.replaceAll("&a", ChatColor.GREEN + "");
+            s = s.replaceAll("&b", ChatColor.AQUA + "");
+            s = s.replaceAll("&c", ChatColor.RED + "");
+            s = s.replaceAll("&d", ChatColor.LIGHT_PURPLE + "");
+            s = s.replaceAll("&e", ChatColor.YELLOW + "");
+            s = s.replaceAll("&f", ChatColor.WHITE + "");
             sList.set(i, s);
         }
         return sList;
