@@ -1,0 +1,12 @@
+name: Entcraft Broadcaster
+main: net.entcraft.broadcast.Main
+description: An Auto-broadcasting plugin for Entcraft.
+author: AlexDGr8r
+version: 1.0
+commands:
+  motd:
+    description: Says the Message of the Day
+    usage: /motd
+  rules:
+    description: Says the rules
+    usage: /rules
