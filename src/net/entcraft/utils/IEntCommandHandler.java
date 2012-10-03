@@ -12,5 +12,10 @@ public interface IEntCommandHandler {
 	 * @return true if command was processed. false if it wasn't.
 	 */
 	public abstract boolean processCommand(CommandSender sender, String[] neededArgs);
+	
+	/**
+	 * @return Description for commands used by this command handler. Used for Help page.
+	 */
+	public abstract String getDescription();
 
 }

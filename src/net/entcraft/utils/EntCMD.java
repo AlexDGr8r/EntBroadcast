@@ -1,6 +1,8 @@
 package net.entcraft.utils;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -11,7 +13,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class EntCMD implements CommandExecutor {
+public class EntCMD implements CommandExecutor, IEntCommandHandler {
 	
 	private JavaPlugin plugin;
 	private String command;
@@ -24,6 +26,7 @@ public class EntCMD implements CommandExecutor {
 		plugin = instance;
 		command = cmd;
 		plugin.getCommand(command).setExecutor(this);
+		this.addSubCommand("help", this, "<page>", 0);
 	}
 	
 	public EntCMD(JavaPlugin instance, String cmd, String pPermission) {
@@ -42,6 +45,7 @@ public class EntCMD implements CommandExecutor {
 	public void addSubCommand(String label, IEntCommandHandler handler, String subCMD, int... neededArgsIndex) {
 		subCMDs.add(new EntCMDHandler(label, subCMD, neededArgsIndex));
 		cmdHandlers.put(label, handler);
+		sortList();
 	}
 	
 	/**
@@ -54,6 +58,7 @@ public class EntCMD implements CommandExecutor {
 	public void addSubCommand(String label, IEntCommandHandler handler, String subCMD) {
 		subCMDs.add(new EntCMDHandler(label, subCMD, null));
 		cmdHandlers.put(label, handler);
+		sortList();
 	}
 	
 	/**
@@ -81,15 +86,48 @@ public class EntCMD implements CommandExecutor {
 		this.addSubCommand(label, handler, subCMD);
 		permissions.put(label, permission);
 	}
+	
+	private void sortList() {
+		
+		Iterator<EntCMDHandler> iter = subCMDs.iterator();
+		HashMap<Integer, List<EntCMDHandler>> hmc = new HashMap<Integer, List<EntCMDHandler>>();
+		int highestArgCount = 0;
+		
+		// Sort by arguments length by storing in seperate lists
+		while (iter.hasNext()) {
+			EntCMDHandler c = iter.next();
+			int length = c.sCMD.length;
+			if (length > highestArgCount) highestArgCount = length;
+			if (hmc.containsKey(length)) {
+				hmc.get(length).add(c);
+			} else {
+				hmc.put(length, new ArrayList<EntCMDHandler>());
+				hmc.get(length).add(c);
+			}
+		}
+		
+		// Sort each seperate list by the least amount of needed args first
+		// Then add those back to original list
+		subCMDs.clear();
+		for (int i = highestArgCount; i >= 1; i--) {
+			List<EntCMDHandler> cList = hmc.get(i);
+			Collections.sort(cList, new Comparator<EntCMDHandler>() {
+				@Override
+				public int compare(EntCMDHandler o1, EntCMDHandler o2) {
+					return (o1.neededArg == null ? 0 : o1.neededArg.length) - (o2.neededArg == null ? 0 : o2.neededArg.length);
+				}
+			});
+			subCMDs.addAll(cList);
+		}
+	}
 
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-		Iterator<EntCMDHandler> iter = subCMDs.iterator();
-		while (iter.hasNext()) {
-			EntCMDHandler c = iter.next();
+		if (args.length == 0) return displayHelp(sender, 1);
+		for (int i = 0; i < subCMDs.size(); i++) {
+			EntCMDHandler c = subCMDs.get(i);
 			if (c.isCommand(args)) {
-				if (sender.isOp() || sender.hasPermission(parentPermission) 
-						|| !permissions.containsKey(c.getLabel()) || sender.hasPermission(permissions.get(c.getLabel()))) {
+				if (c.hasPermission(sender)) {
 					return cmdHandlers.get(c.getLabel()).processCommand(sender, c.getNeededArgs(args));
 				} else {
 					sender.sendMessage(ChatColor.RED + "You do not have permission to use this command.");
@@ -100,14 +138,75 @@ public class EntCMD implements CommandExecutor {
 		return false;
 	}
 	
+	@Override
+	public boolean processCommand(CommandSender sender, String[] neededArgs) {
+		
+		int page;
+		if (neededArgs == null) {
+			page = 1;
+		} else {
+			if (isInteger(sender, neededArgs[0])) {
+				page = Integer.parseInt(neededArgs[0]);
+			} else {
+				return true;
+			}
+		}
+		
+		return displayHelp(sender, page);
+	}
+	
+	@Override
+	public String getDescription() {
+		return "Lists Commands";
+	}
+	
+	public boolean displayHelp(CommandSender sender, int page) {
+		int maxPages = subCMDs.size() / 6 + (subCMDs.size() % 6 == 0 ? 0 : 1);
+		if (page > maxPages) {
+			page = maxPages;
+		} else if (page < 1) {
+			page = 1;
+		}
+		
+		int startIndex = (page - 1) * 6;
+		int endIndex = page * 6 - 1 - (page == maxPages ? 6 - (subCMDs.size() % 6) : 0);
+		sender.sendMessage(ChatColor.GREEN + "===== /" + command + " Commands | Page " + page + " of " + maxPages + " =====");
+		for (int i = startIndex; i <= endIndex; i++) {
+			EntCMDHandler c = subCMDs.get(i);
+			String desc = "/" + command + " " + c.getOriginalSubCommand() + " - " + cmdHandlers.get(c.getLabel()).getDescription();
+			if (desc.length() > 45) {
+				desc = desc.substring(0, 44) + "...";
+			}
+			if (c.hasPermission(sender)) {
+				sender.sendMessage(ChatColor.GREEN + desc);
+			} else {
+				sender.sendMessage(ChatColor.RED + desc);
+			}
+		}
+		
+		return true;
+	}
+	
+	private boolean isInteger(CommandSender sender, String s) {
+		try {
+			Integer.parseInt(s);
+		} catch (NumberFormatException e) {
+//			sender.sendMessage(ChatColor.RED + "Error NumberFormatException: Incorrect value entered.");
+			return false;
+		}
+		return true;
+	}
+	
 	private class EntCMDHandler {
 		
 		private String label;
+		private String sCMDOriginal;
 		private String[] sCMD;
 		private int[] neededArg;
 		
 		public EntCMDHandler(String theLabel, String subcmd, int[] narg) {
 			label = theLabel;
+			sCMDOriginal = subcmd;
 			sCMD = subcmd.split(" ");
 			neededArg = narg;
 		}
@@ -115,7 +214,7 @@ public class EntCMD implements CommandExecutor {
 		public boolean isCommand(String[] args) {
 			if (args.length == sCMD.length) {
 				for (int i = 0; i < sCMD.length; i++) {
-					if (args[i] != sCMD[i] && !isANeededArg(i)) {
+					if (!args[i].equalsIgnoreCase(sCMD[i]) && !isANeededArg(i)) {
 						return false;
 					}
 				}
@@ -146,6 +245,15 @@ public class EntCMD implements CommandExecutor {
 		
 		public String getLabel() {
 			return label;
+		}
+		
+		public String getOriginalSubCommand() {
+			return sCMDOriginal;
+		}
+		
+		public boolean hasPermission(CommandSender sender) {
+			return (sender.isOp() || sender.hasPermission(parentPermission) 
+					|| !permissions.containsKey(getLabel()) || sender.hasPermission(permissions.get(getLabel())));
 		}
 		
 	}
