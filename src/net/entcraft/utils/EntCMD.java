@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 
+import net.entcraft.entpoints.Main;
+
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -62,6 +64,23 @@ public class EntCMD implements CommandExecutor, IEntCommandHandler {
 	}
 	
 	/**
+	 * Add a new sub command after the parent command e.g. everything after /command.
+	 * 
+	 * For the subCMD, be sure to still include an extra argument such as "add players...". players will be discluded when checking if the command
+	 * is the correct command or not. This is mostly so the help screen shows that you will have the ability to have multiple arguments.
+	 * 
+	 * @param label Used to pair commands together
+	 * @param handler The command handler for this command
+	 * @param subCMD the args of the command e.g. everything after the actual command "add points argNeeded secondArgNeeded"
+	 * @param takeAllArgs To return all arguments after the command with the needed args.
+	 */
+	public void addSubCommand(String label, IEntCommandHandler handler, String subCMD, boolean takeAllArgs) {
+		subCMDs.add(new EntCMDHandler(label, subCMD, takeAllArgs));
+		cmdHandlers.put(label, handler);
+		sortList();
+	}
+	
+	/**
 	 * Add a new sub command after the parent command e.g. everything after /command
 	 * 
 	 * @param label Used to pair commands together
@@ -81,9 +100,27 @@ public class EntCMD implements CommandExecutor, IEntCommandHandler {
 	 * @param label Used to pair commands together
 	 * @param handler The command handler for this command
 	 * @param subCMD the args of the command e.g. everything after the actual command "add points argNeeded secondArgNeeded"
+	 * @param permission Permission needed to perform this command
 	 */
 	public void addSubCommand(String label, IEntCommandHandler handler, String subCMD, String permission) {
 		this.addSubCommand(label, handler, subCMD);
+		permissions.put(label, permission);
+	}
+	
+	/**
+	 * Add a new sub command after the parent command e.g. everything after /command.
+	 * 
+	 * For the subCMD, be sure to still include an extra argument such as "add players...". players will be discluded when checking if the command
+	 * is the correct command or not. This is mostly so the help screen shows that you will have the ability to have multiple arguments.
+	 * 
+	 * @param label Used to pair commands together
+	 * @param handler The command handler for this command
+	 * @param subCMD the args of the command e.g. everything after the actual command "add points argNeeded secondArgNeeded"
+	 * @param permission Permission needed to perform this command
+	 * @param takeAllArgs To return all arguments after the command with the needed args.
+	 */
+	public void addSubCommand(String label, IEntCommandHandler handler, String subCMD, String permission, boolean takeAllArgs) {
+		this.addSubCommand(label, handler, subCMD, takeAllArgs);
 		permissions.put(label, permission);
 	}
 	
@@ -169,13 +206,13 @@ public class EntCMD implements CommandExecutor, IEntCommandHandler {
 		}
 		
 		int startIndex = (page - 1) * 6;
-		int endIndex = page * 6 - 1 - (page == maxPages ? 6 - (subCMDs.size() % 6) : 0);
+		int endIndex = page * 6 - 1 - (page == maxPages && subCMDs.size() % 6 != 0 ? 6 - (subCMDs.size() % 6) : 0);
 		sender.sendMessage(ChatColor.GREEN + "===== /" + command + " Commands | Page " + page + " of " + maxPages + " =====");
 		for (int i = startIndex; i <= endIndex; i++) {
 			EntCMDHandler c = subCMDs.get(i);
 			String desc = "/" + command + " " + c.getOriginalSubCommand() + " - " + cmdHandlers.get(c.getLabel()).getDescription();
-			if (desc.length() > 45) {
-				desc = desc.substring(0, 44) + "...";
+			if (desc.length() > 60) {
+				desc = desc.substring(0, 59) + "...";
 			}
 			if (c.hasPermission(sender)) {
 				sender.sendMessage(ChatColor.GREEN + desc);
@@ -203,16 +240,26 @@ public class EntCMD implements CommandExecutor, IEntCommandHandler {
 		private String sCMDOriginal;
 		private String[] sCMD;
 		private int[] neededArg;
+		private boolean takeAllArgs = false;
 		
-		public EntCMDHandler(String theLabel, String subcmd, int[] narg) {
+		private EntCMDHandler(String theLabel, String subcmd) {
 			label = theLabel;
 			sCMDOriginal = subcmd;
 			sCMD = subcmd.split(" ");
+		}
+		
+		public EntCMDHandler(String theLabel, String subcmd, int[] narg) {
+			this(theLabel, subcmd);
 			neededArg = narg;
 		}
 		
+		public EntCMDHandler(String theLabel, String subcmd, boolean allArgs) {
+			this(theLabel, subcmd);
+			takeAllArgs = allArgs;
+		}
+		
 		public boolean isCommand(String[] args) {
-			if (args.length == sCMD.length) {
+			if (args.length == sCMD.length || takeAllArgs) {
 				for (int i = 0; i < sCMD.length; i++) {
 					if (!args[i].equalsIgnoreCase(sCMD[i]) && !isANeededArg(i)) {
 						return false;
@@ -225,6 +272,13 @@ public class EntCMD implements CommandExecutor, IEntCommandHandler {
 		}
 		
 		private boolean isANeededArg(int i) {
+			if (takeAllArgs) {
+				if (i > sCMD.length - 2) {
+					return true;
+				} else {
+					return false;
+				}
+			}
 			if (neededArg == null) return false;
 			for (int k = 0; k < neededArg.length; k++) {
 				if (neededArg[k] == i) {
@@ -235,6 +289,15 @@ public class EntCMD implements CommandExecutor, IEntCommandHandler {
 		}
 		
 		public String[] getNeededArgs(String[] args) {
+			if (takeAllArgs) {
+				int argL = args.length - (sCMD.length - 1);
+				Main.log_info(argL + "");
+				String[] nAll = new String[argL];
+				for (int i = 0; i < nAll.length; i++) {
+					nAll[i] = args[i + (sCMD.length - 1)];
+				}
+				return nAll;
+			}
 			if (neededArg == null) return null;
 			String[] need = new String[neededArg.length];
 			for (int i = 0; i < neededArg.length; i++) {
